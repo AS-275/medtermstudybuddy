@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedTerm Rx</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%233E5C51%22/%3E%3Ctext%20x%3D%2232%22%20y%3D%2243%22%20font-family%3D%22Georgia%2C%20%27Times%20New%20Roman%27%2C%20serif%22%20font-style%3D%22italic%22%20font-weight%3D%22700%22%20font-size%3D%2230%22%20fill%3D%22%23C1502E%22%20text-anchor%3D%22middle%22%3ERx%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --paper: #F6F3EC;
+    --card: #FFFFFF;
+    --ink: #1F2E2B;
+    --ink-soft: #4B5B57;
+    --sage: #5C7A6E;
+    --sage-deep: #3E5C51;
+    --coral: #C1502E;
+    --coral-soft: #E8DCC8;
+    --line: #D8D2C0;
+    --shadow: rgba(31,46,43,0.12);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-position: -1px -1px;
+    color:var(--ink);
+    font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+    min-height:100vh;
+  }
+  .wrap{max-width:900px;margin:0 auto;padding:32px 20px 80px;}
+
+  header.top{
+    display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom: 3px solid var(--ink);
+    padding-bottom:14px; margin-bottom:22px; flex-wrap:wrap; gap:8px;
+  }
+  header.top .title-block h1{
+    font-size:1.9rem; margin:0; letter-spacing:0.2px; font-weight:700;
+  }
+  header.top .title-block p{
+    margin:4px 0 0; font-family: 'Courier New', monospace; font-size:0.78rem;
+    color:var(--ink-soft); letter-spacing:0.5px;
+  }
+  .rx-mark{
+    font-family: Georgia, serif; font-size:2.4rem; color:var(--coral);
+    font-style:italic; line-height:1;
+  }
+
+  nav.tabs{
+    display:flex; gap:0; margin-bottom:24px; border:2px solid var(--ink);
+    border-radius:4px; overflow:hidden; flex-wrap:wrap;
+  }
+  nav.tabs button{
+    flex:1 1 auto; min-width:120px;
+    background:var(--card); border:none; border-right:2px solid var(--ink);
+    padding:12px 10px; font-family:inherit; font-size:0.95rem; font-weight:600;
+    color:var(--ink-soft); cursor:pointer; transition: background .15s, color .15s;
+  }
+  nav.tabs button:last-child{border-right:none;}
+  nav.tabs button.active{ background:var(--sage-deep); color:#fff; }
+  nav.tabs button:not(.active):hover{ background:var(--coral-soft); }
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .lib-controls{display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center;}
+  .lib-controls input[type=text]{
+    flex:1 1 220px; padding:9px 12px; border:2px solid var(--ink); border-radius:4px;
+    font-family:inherit; font-size:0.95rem; background:var(--card);
+  }
+  .chip{
+    padding:7px 12px; border:2px solid var(--ink); border-radius:20px;
+    background:var(--card); font-size:0.82rem; font-family: 'Courier New', monospace;
+    cursor:pointer; color:var(--ink-soft); font-weight:700;
+  }
+  .chip.active{ background:var(--coral); color:#fff; border-color:var(--coral); }
+
+  .part-grid{display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:14px;}
+  .part-card{
+    background:var(--card); border:1.5px solid var(--line); border-left:5px solid var(--sage);
+    border-radius:3px; padding:14px 16px; box-shadow: 0 2px 0 var(--shadow);
+  }
+  .part-card.type-suffix{border-left-color:var(--coral);}
+  .part-card.type-prefix{border-left-color:#8A6BAE;}
+  .part-card.type-abbr{border-left-color:#B8860B;}
+  .part-card.type-assess{border-left-color:#3B6E8F;}
+  .part-card .frag{
+    font-family:'Courier New', monospace; font-weight:700; font-size:1.05rem; color:var(--sage-deep);
+  }
+  .part-card.type-suffix .frag{color:var(--coral);}
+  .part-card.type-prefix .frag{color:#5F4785;}
+  .part-card.type-abbr .frag{color:#8A6714;}
+  .part-card.type-assess .frag{color:#3B6E8F;}
+  .part-card .meaning{margin:4px 0 8px; font-size:0.95rem;}
+  .part-card .example{
+    font-size:0.82rem; color:var(--ink-soft); border-top:1px dashed var(--line); padding-top:6px;
+  }
+  .part-card .example b{color:var(--ink);}
+
+  /* Flashcards */
+  .flash-stage{display:flex; flex-direction:column; align-items:center; gap:18px;}
+  .flash-progress{font-family:'Courier New',monospace; font-size:0.85rem; color:var(--ink-soft);}
+  .card3d{
+    width:100%; max-width:420px; height:230px; perspective:1200px; cursor:pointer;
+  }
+  .card3d-inner{
+    position:relative; width:100%; height:100%; transition: transform .5s;
+    transform-style:preserve-3d;
+  }
+  .card3d.flipped .card3d-inner{ transform: rotateY(180deg); }
+  .face{
+    position:absolute; inset:0; backface-visibility:hidden; border-radius:8px;
+    border:2px solid var(--ink); display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:20px; text-align:center; box-shadow: 0 4px 0 var(--shadow);
+  }
+  .face.front{background:var(--card);}
+  .face.back{ background:var(--sage-deep); color:#fff; transform: rotateY(180deg); }
+  .face .tag{ font-family:'Courier New',monospace; font-size:0.75rem; letter-spacing:1px; opacity:0.7; margin-bottom:10px;}
+  .face .big{ font-size:1.5rem; font-weight:700; }
+  .face.back .big{font-size:1.15rem; font-weight:600;}
+  .flash-buttons{display:flex; gap:10px;}
+  .btn{
+    padding:10px 18px; border-radius:5px; border:2px solid var(--ink); background:var(--card);
+    font-family:inherit; font-weight:700; font-size:0.9rem; cursor:pointer; color:var(--ink);
+  }
+  .btn.primary{ background:var(--ink); color:var(--paper); }
+  .btn.good{ background:var(--sage-deep); color:#fff; border-color:var(--sage-deep); }
+  .btn.bad{ background:var(--coral); color:#fff; border-color:var(--coral); }
+  .btn:hover{ filter:brightness(0.95); }
+  .mastered-bar{ width:100%; max-width:420px; height:8px; background:var(--line); border-radius:4px; overflow:hidden;}
+  .mastered-fill{ height:100%; background:var(--coral); width:0%; transition:width .3s;}
+
+  /* Builder & Quiz shared */
+  .qa-card{
+    background:var(--card); border:2px solid var(--ink); border-radius:6px; padding:22px;
+    max-width:560px; margin:0 auto; box-shadow: 0 3px 0 var(--shadow);
+  }
+  .qa-card .prompt-label{ font-family:'Courier New',monospace; font-size:0.75rem; color:var(--sage-deep); letter-spacing:1px; margin-bottom:8px;}
+  .qa-card .prompt{ font-size:1.15rem; margin-bottom:18px; line-height:1.4;}
+  .choices{ display:flex; flex-direction:column; gap:10px; }
+  .choice-btn{
+    text-align:left; padding:12px 14px; border:2px solid var(--ink); border-radius:5px;
+    background:var(--card); font-family:inherit; font-size:0.98rem; cursor:pointer;
+  }
+  .choice-btn:hover{ background:var(--coral-soft); }
+  .choice-row{ display:flex; align-items:center; gap:8px; }
+  .choice-row .choice-btn{ flex:1; }
+  .choice-btn.correct{ background:var(--sage-deep); color:#fff; border-color:var(--sage-deep); }
+  .choice-btn.incorrect{ background:var(--coral); color:#fff; border-color:var(--coral); }
+  .feedback{ margin-top:14px; font-size:0.92rem; color:var(--ink-soft); min-height:20px; }
+  .score-row{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;
+    font-family:'Courier New',monospace; font-size:0.85rem; color:var(--ink-soft);
+  }
+  .next-row{ margin-top:16px; text-align:right; }
+
+  .add-form{ display:flex; flex-direction:column; gap:14px; }
+  .add-form label{ display:flex; flex-direction:column; gap:5px; font-size:0.85rem; color:var(--ink-soft); font-family:'Courier New',monospace; }
+  .add-form input, .add-form select{
+    padding:9px 11px; border:2px solid var(--ink); border-radius:4px; font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+    font-size:0.98rem; color:var(--ink); background:var(--card);
+  }
+  .custom-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--card); border:1.5px solid var(--line); border-left:5px solid #8A6BAE;
+    border-radius:3px; padding:10px 14px;
+  }
+  .custom-row .info{ font-size:0.9rem; }
+  .custom-row .info b{ font-family:'Courier New',monospace; color:var(--sage-deep); }
+  .custom-row .remove{
+    border:2px solid var(--coral); color:var(--coral); background:transparent; border-radius:4px;
+    padding:5px 10px; font-family:inherit; font-weight:700; cursor:pointer; font-size:0.8rem;
+  }
+  .custom-row .remove:hover{ background:var(--coral); color:#fff; }
+
+  .voice-row{
+    display:flex; align-items:center; gap:8px; margin-bottom:18px; font-size:0.85rem;
+    color:var(--ink-soft); font-family:'Courier New',monospace;
+  }
+  .voice-row select{
+    padding:6px 10px; border:2px solid var(--ink); border-radius:4px; background:var(--card);
+    font-family:inherit; font-size:0.82rem; color:var(--ink); max-width:280px;
+  }
+
+  .speak-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:26px; height:26px; border-radius:50%; border:1.5px solid var(--sage-deep);
+    background:var(--card); color:var(--sage-deep); cursor:pointer; font-size:0.85rem;
+    padding:0; line-height:1; flex-shrink:0;
+  }
+  .speak-btn:hover{ background:var(--sage-deep); color:#fff; }
+  .speak-btn:active{ transform: scale(0.94); }
+  .speak-btn.on-dark{ border-color:#fff; color:#fff; background:transparent; }
+  .speak-btn.on-dark:hover{ background:rgba(255,255,255,0.2); }
+  .delete-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:50%; border:1.5px solid var(--line);
+    background:var(--card); color:var(--ink-soft); cursor:pointer; padding:0; flex-shrink:0;
+  }
+  .delete-btn:hover{ background:var(--coral); border-color:var(--coral); color:#fff; }
+  .part-card .frag-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+
+  footer.note{
+    text-align:center; margin-top:50px; font-size:0.8rem; color:var(--ink-soft);
+    font-family:'Courier New',monospace;
+  }
+  @media (max-width:520px){
+    header.top .title-block h1{font-size:1.5rem;}
+    .rx-mark{font-size:1.8rem;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="title-block">
+      <h1>MedTerm Rx</h1>
+      <p>WORD PARTS + ABBREVIATIONS + ASSESSMENT TERMS</p>
+    </div>
+    <div class="rx-mark">℞</div>
+  </header>
+
+  <div class="voice-row" id="voiceRow" style="display:none;">
+    <label for="voiceSelect"><b>Not pronouncing well?</b> Try a different voice:</label>
+    <select id="voiceSelect"></select>
+  </div>
+
+  <nav class="tabs" id="tabs">
+    <button data-panel="library" class="active">Library</button>
+    <button data-panel="flash">Flashcards</button>
+    <button data-panel="builder">Term Builder</button>
+    <button data-panel="quiz">Quick Quiz</button>
+    <button data-panel="add">Add Your Own</button>
+  </nav>
+
+  <!-- LIBRARY -->
+  <section class="panel active" id="panel-library">
+    <div class="lib-controls">
+      <input type="text" id="searchBox" placeholder="Search a fragment, meaning, or example term...">
+    </div>
+    <div class="lib-controls" id="filterChips"></div>
+    <div class="part-grid" id="partGrid"></div>
+  </section>
+
+  <!-- FLASHCARDS -->
+  <section class="panel" id="panel-flash">
+    <div class="flash-stage">
+      <div class="flash-progress" id="flashProgress">Card 1 of 70</div>
+      <div class="card3d" id="flashCard">
+        <div class="card3d-inner">
+          <div class="face front">
+            <div class="tag">WORD PART</div>
+            <div class="big" id="flashFront">card</div>
+            <div id="flashFrontSpeak"></div>
+          </div>
+          <div class="face back">
+            <div class="tag">MEANING</div>
+            <div class="big" id="flashBack">meaning</div>
+            <div id="flashBackSpeak"></div>
+          </div>
+        </div>
+      </div>
+      <div class="mastered-bar"><div class="mastered-fill" id="masteredFill"></div></div>
+      <div style="font-family:'Courier New',monospace;font-size:0.78rem;color:var(--ink-soft)" id="masteredLabel">0 mastered</div>
+      <div class="flash-buttons">
+        <button class="btn bad" id="btnStillLearning">Still learning</button>
+        <button class="btn" id="btnFlip">Flip card</button>
+        <button class="btn good" id="btnGotIt">Got it!</button>
+      </div>
+      <button class="btn primary" id="btnShuffle">Shuffle deck</button>
+    </div>
+  </section>
+
+  <!-- BUILDER -->
+  <section class="panel" id="panel-builder">
+    <div class="qa-card">
+      <div class="score-row"><span id="builderScore">Score: 0 / 0</span><span id="builderCount">Round 1</span></div>
+      <div class="prompt-label">DEFINITION</div>
+      <div class="prompt" id="builderPrompt">...</div>
+      <div class="choices" id="builderChoices"></div>
+      <div class="feedback" id="builderFeedback"></div>
+      <div class="next-row"><button class="btn primary" id="builderNext">Next term →</button></div>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="panel" id="panel-quiz">
+    <div class="qa-card">
+      <div class="score-row"><span id="quizScore">Score: 0 / 0</span><span id="quizCount">Question 1</span></div>
+      <div class="prompt-label">WHAT DOES THIS WORD PART MEAN?</div>
+      <div class="prompt" id="quizPrompt">...</div>
+      <div class="choices" id="quizChoices"></div>
+      <div class="feedback" id="quizFeedback"></div>
+      <div class="next-row"><button class="btn primary" id="quizNext">Next question →</button></div>
+    </div>
+  </section>
+
+  <!-- ADD YOUR OWN -->
+  <section class="panel" id="panel-add">
+    <div class="qa-card" style="max-width:560px;">
+      <div class="prompt-label">NEW ENTRY</div>
+      <form id="addForm" class="add-form">
+        <label>What are you adding?
+          <select id="addType">
+            <option value="root">Word Part — Root</option>
+            <option value="prefix">Word Part — Prefix</option>
+            <option value="suffix">Word Part — Suffix</option>
+            <option value="abbr">Abbreviation</option>
+            <option value="assess">Assessment Term</option>
+          </select>
+        </label>
+        <label id="addFragLabel">Fragment (e.g. cardi/o, hyper-, -itis)
+          <input type="text" id="addFrag" required placeholder="cardi/o">
+        </label>
+        <label>Category (used for filtering)
+          <input type="text" id="addCat" placeholder="My Additions" value="My Additions">
+        </label>
+        <label id="addMeaningLabel">Meaning
+          <input type="text" id="addMeaning" required placeholder="heart">
+        </label>
+        <label id="addExLabel">Example term
+          <input type="text" id="addEx" required placeholder="cardiology">
+        </label>
+        <label id="addExDefLabel">Example term's definition
+          <input type="text" id="addExDef" required placeholder="the study of the heart">
+        </label>
+        <button type="submit" class="btn primary" style="align-self:flex-start;margin-top:6px;">Add entry</button>
+      </form>
+      <div class="feedback" id="addFeedback"></div>
+    </div>
+
+    <div style="max-width:560px;margin:26px auto 0;">
+      <div class="prompt-label" style="text-align:left;">YOUR ADDITIONS (<span id="customCount">0</span>)</div>
+      <div id="customList" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;"></div>
+    </div>
+
+    <div style="max-width:560px;margin:22px auto 0;padding-top:16px;border-top:1px dashed var(--line);">
+      <div class="prompt-label" style="text-align:left;">DELETED DEFAULT ENTRIES (<span id="deletedCount">0</span>)</div>
+      <p style="font-size:0.85rem;color:var(--ink-soft);margin:6px 0 10px;">
+        Removed a built-in entry by mistake? Bring back everything you've deleted.
+      </p>
+      <button type="button" class="btn" id="btnRestoreDefaults">Restore deleted defaults</button>
+    </div>
+  </section>
+
+  <footer class="note">Deck resets each visit — no data leaves your browser.</footer>
+</div>
+
+<script>
+// ---------- DATA ----------
+const PARTS = [
+  {frag:"cardi/o", type:"root", cat:"Body Systems", meaning:"heart", ex:"cardiology", exDef:"the study of the heart", pron:"KAR dee oh", exPron:"kar dee OL uh jee"},
+  {frag:"gastr/o", type:"root", cat:"Body Systems", meaning:"stomach", ex:"gastritis", exDef:"inflammation of the stomach", pron:"GAS troh", exPron:"gas TRY tis"},
+  {frag:"neur/o", type:"root", cat:"Body Systems", meaning:"nerve", ex:"neuralgia", exDef:"nerve pain", pron:"NOOR oh", exPron:"noo RAL juh"},
+  {frag:"dermat/o", type:"root", cat:"Body Systems", meaning:"skin", ex:"dermatitis", exDef:"inflammation of the skin", pron:"der MAT oh", exPron:"der muh TY tis"},
+  {frag:"oste/o", type:"root", cat:"Body Systems", meaning:"bone", ex:"osteoporosis", exDef:"condition of porous, weakened bone", pron:"OSS tee oh", exPron:"oss tee oh puh ROH sis"},
+  {frag:"arthr/o", type:"root", cat:"Body Systems", meaning:"joint", ex:"arthritis", exDef:"inflammation of a joint", pron:"AR throh", exPron:"ar THRY tis"},
+  {frag:"my/o", type:"root", cat:"Body Systems", meaning:"muscle", ex:"myopathy", exDef:"disease of the muscle", pron:"MY oh", exPron:"my OP uh thee"},
+  {frag:"hepat/o", type:"root", cat:"Body Systems", meaning:"liver", ex:"hepatitis", exDef:"inflammation of the liver", pron:"heh PAT oh", exPron:"heh puh TY tis"},
+  {frag:"nephr/o", type:"root", cat:"Body Systems", meaning:"kidney", ex:"nephrology", exDef:"the study of the kidneys", pron:"NEF roh", exPron:"neh FROL uh jee"},
+  {frag:"pulmon/o", type:"root", cat:"Body Systems", meaning:"lung", ex:"pulmonary", exDef:"relating to the lungs", pron:"PUL muh noh", exPron:"PUL muh nair ee"},
+  {frag:"pneum/o", type:"root", cat:"Body Systems", meaning:"lung, air", ex:"pneumonia", exDef:"infection/inflammation of the lung", pron:"NOO moh", exPron:"noo MOHN yuh"},
+  {frag:"hem/o", type:"root", cat:"Body Systems", meaning:"blood", ex:"hemorrhage", exDef:"excessive bleeding", pron:"HEE moh", exPron:"HEM uh rij"},
+  {frag:"hemat/o", type:"root", cat:"Body Systems", meaning:"blood", ex:"hematology", exDef:"the study of blood", pron:"HEE muh toh", exPron:"hee muh TOL uh jee"},
+  {frag:"gynec/o", type:"root", cat:"Body Systems", meaning:"woman", ex:"gynecology", exDef:"the study of female reproductive health", pron:"guy NEH koh", exPron:"guy nuh KOL uh jee"},
+  {frag:"ot/o", type:"root", cat:"Body Systems", meaning:"ear", ex:"otitis", exDef:"inflammation of the ear", pron:"OH toh", exPron:"oh TY tis"},
+  {frag:"ophthalm/o", type:"root", cat:"Body Systems", meaning:"eye", ex:"ophthalmology", exDef:"the study of the eye", pron:"off THAL moh", exPron:"off thal MOL uh jee"},
+  {frag:"rhin/o", type:"root", cat:"Body Systems", meaning:"nose", ex:"rhinitis", exDef:"inflammation of the nose", pron:"RY noh", exPron:"ry NY tis"},
+  {frag:"dent/o", type:"root", cat:"Body Systems", meaning:"tooth", ex:"dentist", exDef:"one who treats the teeth", pron:"DEN toh", exPron:"DEN tist"},
+  {frag:"cyt/o", type:"root", cat:"Body Systems", meaning:"cell", ex:"cytology", exDef:"the study of cells", pron:"SY toh", exPron:"sy TOL uh jee"},
+  {frag:"enter/o", type:"root", cat:"Body Systems", meaning:"intestine", ex:"enteritis", exDef:"inflammation of the intestine", pron:"EN ter oh", exPron:"en ter EYE tis"},
+  {frag:"col/o", type:"root", cat:"Body Systems", meaning:"colon", ex:"colitis", exDef:"inflammation of the colon", pron:"KOH loh", exPron:"koh LY tis"},
+  {frag:"hyster/o", type:"root", cat:"Body Systems", meaning:"uterus", ex:"hysterectomy", exDef:"surgical removal of the uterus", pron:"HISS ter oh", exPron:"hiss tuh REK tuh mee"},
+  {frag:"pod/o", type:"root", cat:"Body Systems", meaning:"foot", ex:"podiatry", exDef:"treatment of the foot", pron:"POH doh", exPron:"puh DY uh tree"},
+  {frag:"thromb/o", type:"root", cat:"Body Systems", meaning:"clot", ex:"thrombosis", exDef:"condition of a blood clot", pron:"THROM boh", exPron:"throm BOH sis"},
+  {frag:"encephal/o", type:"root", cat:"Body Systems", meaning:"brain", ex:"encephalitis", exDef:"inflammation of the brain", pron:"en SEF uh loh", exPron:"en sef uh LY tis"},
+  {frag:"path/o", type:"root", cat:"Body Systems", meaning:"disease", ex:"pathology", exDef:"the study of disease", pron:"PATH oh", exPron:"puh THOL uh jee"},
+  {frag:"cranio", type:"root", cat:"Body Systems", meaning:"skull", ex:"craniotomy", exDef:"surgical opening into the skull", pron:"KRAY nee oh", exPron:"kray nee OT uh mee"},
+
+  {frag:"hyper-", type:"prefix", cat:"Prefixes", meaning:"excessive, above normal", ex:"hypertension", exDef:"high blood pressure", pron:"HY per", exPron:"hy per TEN shun"},
+  {frag:"hypo-", type:"prefix", cat:"Prefixes", meaning:"deficient, below normal", ex:"hypotension", exDef:"low blood pressure", pron:"HY poh", exPron:"hy poh TEN shun"},
+  {frag:"brady-", type:"prefix", cat:"Prefixes", meaning:"slow", ex:"bradycardia", exDef:"abnormally slow heart rate", pron:"BRAY dee", exPron:"bray dee KAR dee uh"},
+  {frag:"tachy-", type:"prefix", cat:"Prefixes", meaning:"fast", ex:"tachycardia", exDef:"abnormally fast heart rate", pron:"TAK ee", exPron:"tak ee KAR dee uh"},
+  {frag:"a-/an-", type:"prefix", cat:"Prefixes", meaning:"without, not", ex:"anemia", exDef:"lack of healthy red blood cells", pron:"a or an", exPron:"uh NEE mee uh"},
+  {frag:"dys-", type:"prefix", cat:"Prefixes", meaning:"difficult, painful, abnormal", ex:"dyspnea", exDef:"difficulty breathing", pron:"DIS", exPron:"DISP nee uh"},
+  {frag:"peri-", type:"prefix", cat:"Prefixes", meaning:"surrounding", ex:"pericardium", exDef:"the sac surrounding the heart", pron:"PER ih", exPron:"per ih KAR dee um"},
+  {frag:"sub-", type:"prefix", cat:"Prefixes", meaning:"below, under", ex:"subcutaneous", exDef:"beneath the skin", pron:"SUB", exPron:"sub kyoo TAY nee us"},
+  {frag:"epi-", type:"prefix", cat:"Prefixes", meaning:"upon, above", ex:"epidermis", exDef:"the outer layer of skin", pron:"EP ih", exPron:"ep ih DER mis"},
+  {frag:"inter-", type:"prefix", cat:"Prefixes", meaning:"between", ex:"intercostal", exDef:"between the ribs", pron:"IN ter", exPron:"in ter KOS tul"},
+  {frag:"intra-", type:"prefix", cat:"Prefixes", meaning:"within", ex:"intravenous", exDef:"within a vein", pron:"IN truh", exPron:"in truh VEE nus"},
+  {frag:"poly-", type:"prefix", cat:"Prefixes", meaning:"many", ex:"polyuria", exDef:"excessive urination", pron:"POL ee", exPron:"pol ee YOOR ee uh"},
+  {frag:"pre-", type:"prefix", cat:"Prefixes", meaning:"before", ex:"prenatal", exDef:"before birth", pron:"PREE", exPron:"pree NAY tul"},
+  {frag:"post-", type:"prefix", cat:"Prefixes", meaning:"after", ex:"postoperative", exDef:"after surgery", pron:"POHST", exPron:"pohst OP er uh tiv"},
+  {frag:"anti-", type:"prefix", cat:"Prefixes", meaning:"against", ex:"antibiotic", exDef:"a drug that fights bacteria", pron:"AN tie", exPron:"an tie by OT ik"},
+  {frag:"bi-", type:"prefix", cat:"Prefixes", meaning:"two", ex:"bilateral", exDef:"affecting both sides", pron:"BY", exPron:"by LAT er ul"},
+  {frag:"uni-", type:"prefix", cat:"Prefixes", meaning:"one", ex:"unilateral", exDef:"affecting one side", pron:"YOO nih", exPron:"yoo nih LAT er ul"},
+  {frag:"quadri-", type:"prefix", cat:"Prefixes", meaning:"four", ex:"quadriplegia", exDef:"paralysis of all four limbs", pron:"KWAH drih", exPron:"kwah drih PLEE juh"},
+  {frag:"macro-", type:"prefix", cat:"Prefixes", meaning:"large", ex:"macrocyte", exDef:"an abnormally large cell", pron:"MAK roh", exPron:"MAK roh site"},
+  {frag:"micro-", type:"prefix", cat:"Prefixes", meaning:"small", ex:"microscope", exDef:"an instrument for viewing small objects", pron:"MY kroh", exPron:"MY kroh skohp"},
+  {frag:"leuk/o-", type:"prefix", cat:"Prefixes", meaning:"white", ex:"leukocyte", exDef:"a white blood cell", pron:"LOO koh", exPron:"LOO koh site"},
+  {frag:"erythr/o-", type:"prefix", cat:"Prefixes", meaning:"red", ex:"erythrocyte", exDef:"a red blood cell", pron:"eh RITH roh", exPron:"eh RITH roh site"},
+  {frag:"cyan/o-", type:"prefix", cat:"Prefixes", meaning:"blue", ex:"cyanosis", exDef:"bluish discoloration from low oxygen", pron:"SY uh noh", exPron:"sy uh NOH sis"},
+
+  {frag:"-itis", type:"suffix", cat:"Suffixes", meaning:"inflammation", ex:"tonsillitis", exDef:"inflammation of the tonsils", pron:"EYE tis", exPron:"ton sih LY tis"},
+  {frag:"-ectomy", type:"suffix", cat:"Suffixes", meaning:"surgical removal", ex:"appendectomy", exDef:"surgical removal of the appendix", pron:"EK tuh mee", exPron:"ap en DEK tuh mee"},
+  {frag:"-otomy", type:"suffix", cat:"Suffixes", meaning:"cutting into, incision", ex:"tracheotomy", exDef:"an incision into the trachea", pron:"OT uh mee", exPron:"tray kee OT uh mee"},
+  {frag:"-ostomy", type:"suffix", cat:"Suffixes", meaning:"creation of a new opening", ex:"colostomy", exDef:"surgical opening into the colon", pron:"OS tuh mee", exPron:"kuh LOS tuh mee"},
+  {frag:"-plasty", type:"suffix", cat:"Suffixes", meaning:"surgical repair", ex:"rhinoplasty", exDef:"surgical repair of the nose", pron:"PLAS tee", exPron:"RY noh plas tee"},
+  {frag:"-scopy", type:"suffix", cat:"Suffixes", meaning:"visual examination", ex:"endoscopy", exDef:"visual exam inside the body", pron:"SKUH pee", exPron:"en DOS kuh pee"},
+  {frag:"-scope", type:"suffix", cat:"Suffixes", meaning:"instrument for viewing", ex:"stethoscope", exDef:"instrument for listening to the body", pron:"SKOHP", exPron:"STETH uh skohp"},
+  {frag:"-algia", type:"suffix", cat:"Suffixes", meaning:"pain", ex:"myalgia", exDef:"muscle pain", pron:"AL juh", exPron:"my AL juh"},
+  {frag:"-emia", type:"suffix", cat:"Suffixes", meaning:"blood condition", ex:"anemia", exDef:"a lack of healthy red blood cells", pron:"EE mee uh", exPron:"uh NEE mee uh"},
+  {frag:"-osis", type:"suffix", cat:"Suffixes", meaning:"abnormal condition", ex:"cyanosis", exDef:"a bluish condition of the skin", pron:"OH sis", exPron:"sy uh NOH sis"},
+  {frag:"-gram", type:"suffix", cat:"Suffixes", meaning:"record, image", ex:"electrocardiogram", exDef:"a record of the heart's electrical activity", pron:"GRAM", exPron:"ee LEK troh KAR dee oh gram"},
+  {frag:"-graphy", type:"suffix", cat:"Suffixes", meaning:"process of recording", ex:"radiography", exDef:"the process of making x-ray images", pron:"GRUH fee", exPron:"ray dee OG ruh fee"},
+  {frag:"-meter", type:"suffix", cat:"Suffixes", meaning:"instrument that measures", ex:"thermometer", exDef:"instrument that measures temperature", pron:"MEE ter", exPron:"ther MOM uh ter"},
+  {frag:"-pathy", type:"suffix", cat:"Suffixes", meaning:"disease", ex:"neuropathy", exDef:"disease of the nerves", pron:"PUH thee", exPron:"noo ROP uh thee"},
+  {frag:"-logy", type:"suffix", cat:"Suffixes", meaning:"study of", ex:"cardiology", exDef:"the study of the heart", pron:"LUH jee", exPron:"kar dee OL uh jee"},
+  {frag:"-logist", type:"suffix", cat:"Suffixes", meaning:"one who studies/specializes", ex:"dermatologist", exDef:"a specialist in skin conditions", pron:"LUH jist", exPron:"der muh TOL uh jist"},
+  {frag:"-plegia", type:"suffix", cat:"Suffixes", meaning:"paralysis", ex:"paraplegia", exDef:"paralysis of the lower body", pron:"PLEE juh", exPron:"pair uh PLEE juh"},
+  {frag:"-emesis", type:"suffix", cat:"Suffixes", meaning:"vomiting", ex:"hematemesis", exDef:"vomiting blood", pron:"EM uh sis", exPron:"hee muh TEM uh sis"},
+  {frag:"-uria", type:"suffix", cat:"Suffixes", meaning:"urine condition", ex:"hematuria", exDef:"blood in the urine", pron:"YOOR ee uh", exPron:"hee muh TYOOR ee uh"},
+  {frag:"-pnea", type:"suffix", cat:"Suffixes", meaning:"breathing", ex:"apnea", exDef:"temporary absence of breathing", pron:"NEE uh", exPron:"AP nee uh"},
+  {frag:"-cyte", type:"suffix", cat:"Suffixes", meaning:"cell", ex:"leukocyte", exDef:"a white blood cell", pron:"SITE", exPron:"LOO koh site"},
+  {frag:"-rrhea", type:"suffix", cat:"Suffixes", meaning:"discharge, flow", ex:"diarrhea", exDef:"frequent, watery bowel movements", pron:"REE uh", exPron:"dy uh REE uh"},
+  {frag:"-rrhage", type:"suffix", cat:"Suffixes", meaning:"excessive bleeding/flow", ex:"hemorrhage", exDef:"severe, uncontrolled bleeding", pron:"RIJ", exPron:"HEM uh rij"},
+  {frag:"-megaly", type:"suffix", cat:"Suffixes", meaning:"enlargement", ex:"cardiomegaly", exDef:"enlargement of the heart", pron:"MEG uh lee", exPron:"kar dee oh MEG uh lee"},
+  {frag:"-malacia", type:"suffix", cat:"Suffixes", meaning:"softening", ex:"osteomalacia", exDef:"softening of the bones", pron:"muh LAY shuh", exPron:"oss tee oh muh LAY shuh"},
+  {frag:"-sclerosis", type:"suffix", cat:"Suffixes", meaning:"hardening", ex:"arteriosclerosis", exDef:"hardening of the arteries", pron:"skluh ROH sis", exPron:"ar teer ee oh skluh ROH sis"},
+  {frag:"-oma", type:"suffix", cat:"Suffixes", meaning:"tumor, mass", ex:"melanoma", exDef:"a tumor of pigment-producing cells", pron:"OH muh", exPron:"mel uh NOH muh"},
+  {frag:"-phobia", type:"suffix", cat:"Suffixes", meaning:"abnormal fear", ex:"claustrophobia", exDef:"fear of enclosed spaces", pron:"FOH bee uh", exPron:"klaw struh FOH bee uh"},
+
+  {frag:"BP", type:"abbr", cat:"Abbreviations", meaning:"blood pressure", ex:"BP 120/80", exDef:"a normal blood pressure reading, in mmHg"},
+  {frag:"HR", type:"abbr", cat:"Abbreviations", meaning:"heart rate", ex:"HR 72 bpm", exDef:"the number of heartbeats per minute"},
+  {frag:"RR", type:"abbr", cat:"Abbreviations", meaning:"respiratory rate", ex:"RR 16", exDef:"the number of breaths per minute"},
+  {frag:"T", type:"abbr", cat:"Abbreviations", meaning:"temperature", ex:"T 98.6°F", exDef:"body temperature reading"},
+  {frag:"Dx", type:"abbr", cat:"Abbreviations", meaning:"diagnosis", ex:"Dx: appendicitis", exDef:"the identification of a disease"},
+  {frag:"Sx", type:"abbr", cat:"Abbreviations", meaning:"symptoms", ex:"Sx: fever, cough", exDef:"the signs a patient is experiencing"},
+  {frag:"Tx", type:"abbr", cat:"Abbreviations", meaning:"treatment", ex:"Tx: antibiotics", exDef:"the care given for a condition"},
+  {frag:"Hx", type:"abbr", cat:"Abbreviations", meaning:"history", ex:"Hx of asthma", exDef:"a patient's medical background"},
+  {frag:"Fx", type:"abbr", cat:"Abbreviations", meaning:"fracture", ex:"Fx of the tibia", exDef:"a broken bone"},
+  {frag:"Rx", type:"abbr", cat:"Abbreviations", meaning:"prescription", ex:"Rx: 500mg twice daily", exDef:"a written order for medication"},
+  {frag:"NPO", type:"abbr", cat:"Abbreviations", meaning:"nothing by mouth", ex:"NPO after midnight", exDef:"instruction to eat or drink nothing"},
+  {frag:"PRN", type:"abbr", cat:"Abbreviations", meaning:"as needed", ex:"Take PRN for pain", exDef:"used only when necessary"},
+  {frag:"STAT", type:"abbr", cat:"Abbreviations", meaning:"immediately", ex:"Call the doctor STAT", exDef:"without any delay"},
+  {frag:"BID", type:"abbr", cat:"Abbreviations", meaning:"twice a day", ex:"Take BID", exDef:"medication taken two times per day"},
+  {frag:"TID", type:"abbr", cat:"Abbreviations", meaning:"three times a day", ex:"Take TID", exDef:"medication taken three times per day"},
+  {frag:"QID", type:"abbr", cat:"Abbreviations", meaning:"four times a day", ex:"Take QID", exDef:"medication taken four times per day"},
+  {frag:"PO", type:"abbr", cat:"Abbreviations", meaning:"by mouth", ex:"Take medication PO", exDef:"administered orally"},
+  {frag:"IV", type:"abbr", cat:"Abbreviations", meaning:"intravenous", ex:"IV fluids", exDef:"given directly into a vein"},
+  {frag:"IM", type:"abbr", cat:"Abbreviations", meaning:"intramuscular", ex:"IM injection", exDef:"given directly into a muscle"},
+  {frag:"SubQ", type:"abbr", cat:"Abbreviations", meaning:"subcutaneous", ex:"SubQ injection", exDef:"given just under the skin"},
+  {frag:"WBC", type:"abbr", cat:"Abbreviations", meaning:"white blood cell", ex:"elevated WBC count", exDef:"a count of infection-fighting cells"},
+  {frag:"RBC", type:"abbr", cat:"Abbreviations", meaning:"red blood cell", ex:"low RBC count", exDef:"a count of oxygen-carrying cells"},
+  {frag:"CBC", type:"abbr", cat:"Abbreviations", meaning:"complete blood count", ex:"order a CBC", exDef:"a blood test measuring several cell types"},
+  {frag:"BMI", type:"abbr", cat:"Abbreviations", meaning:"body mass index", ex:"BMI of 24", exDef:"a measure of body fat based on height and weight"},
+  {frag:"CPR", type:"abbr", cat:"Abbreviations", meaning:"cardiopulmonary resuscitation", ex:"begin CPR", exDef:"emergency procedure to restart breathing/circulation"},
+  {frag:"ER", type:"abbr", cat:"Abbreviations", meaning:"emergency room", ex:"taken to the ER", exDef:"department for urgent care"},
+  {frag:"ICU", type:"abbr", cat:"Abbreviations", meaning:"intensive care unit", ex:"admitted to the ICU", exDef:"unit for critically ill patients"},
+  {frag:"OR", type:"abbr", cat:"Abbreviations", meaning:"operating room", ex:"taken to the OR", exDef:"room where surgery is performed"},
+  {frag:"DOB", type:"abbr", cat:"Abbreviations", meaning:"date of birth", ex:"confirm the patient's DOB", exDef:"the date a person was born"},
+  {frag:"Pt", type:"abbr", cat:"Abbreviations", meaning:"patient", ex:"Pt reports pain", exDef:"the person receiving care"},
+  {frag:"ROM", type:"abbr", cat:"Abbreviations", meaning:"range of motion", ex:"full ROM in the knee", exDef:"how far a joint can move"},
+  {frag:"SOB", type:"abbr", cat:"Abbreviations", meaning:"shortness of breath", ex:"Pt reports SOB", exDef:"difficulty breathing"},
+
+  {frag:"inspection", type:"assess", cat:"Assessment Terms", meaning:"looking carefully at the body", ex:"visual inspection", exDef:"examining the body by sight"},
+  {frag:"palpation", type:"assess", cat:"Assessment Terms", meaning:"examining by touch", ex:"abdominal palpation", exDef:"feeling with the hands to check organs, texture, or tenderness"},
+  {frag:"auscultation", type:"assess", cat:"Assessment Terms", meaning:"listening to internal sounds", ex:"cardiac auscultation", exDef:"listening to heart or lung sounds, usually with a stethoscope"},
+  {frag:"percussion", type:"assess", cat:"Assessment Terms", meaning:"tapping to assess underlying structures", ex:"chest percussion", exDef:"tapping on the body and listening to the resulting sound"},
+  {frag:"vital signs", type:"assess", cat:"Assessment Terms", meaning:"key body measurements", ex:"vital signs stable", exDef:"temperature, pulse, respiration, and blood pressure"},
+  {frag:"pulse", type:"assess", cat:"Assessment Terms", meaning:"rhythmic beat of an artery", ex:"radial pulse", exDef:"a measurable sign of the heartbeat"},
+  {frag:"chief complaint", type:"assess", cat:"Assessment Terms", meaning:"main reason for a visit", ex:"chief complaint: chest pain", exDef:"the primary problem a patient reports"},
+  {frag:"prognosis", type:"assess", cat:"Assessment Terms", meaning:"likely outcome of a disease", ex:"good prognosis", exDef:"the expected course or result of a condition"},
+  {frag:"diagnosis", type:"assess", cat:"Assessment Terms", meaning:"identification of a disease", ex:"final diagnosis", exDef:"determining what condition a patient has"},
+  {frag:"symptom", type:"assess", cat:"Assessment Terms", meaning:"subjective evidence of disease", ex:"reported symptoms", exDef:"something the patient feels and reports, like pain"},
+  {frag:"sign", type:"assess", cat:"Assessment Terms", meaning:"objective evidence of disease", ex:"clinical sign", exDef:"something the examiner observes or measures"},
+  {frag:"acute", type:"assess", cat:"Assessment Terms", meaning:"sudden onset, short course", ex:"acute appendicitis", exDef:"a condition that comes on quickly"},
+  {frag:"chronic", type:"assess", cat:"Assessment Terms", meaning:"long-lasting or persistent", ex:"chronic condition", exDef:"a condition that continues over a long time"},
+  {frag:"benign", type:"assess", cat:"Assessment Terms", meaning:"not harmful, not cancerous", ex:"benign tumor", exDef:"a growth that does not spread or invade"},
+  {frag:"malignant", type:"assess", cat:"Assessment Terms", meaning:"cancerous, tends to spread", ex:"malignant tumor", exDef:"a harmful growth that can invade other tissue"},
+  {frag:"remission", type:"assess", cat:"Assessment Terms", meaning:"symptoms reduced or absent", ex:"cancer in remission", exDef:"a period when a disease is under control"},
+  {frag:"exacerbation", type:"assess", cat:"Assessment Terms", meaning:"worsening of symptoms", ex:"asthma exacerbation", exDef:"a flare-up of an existing condition"},
+  {frag:"prophylaxis", type:"assess", cat:"Assessment Terms", meaning:"prevention of disease", ex:"antibiotic prophylaxis", exDef:"treatment given to prevent illness"},
+  {frag:"palliative", type:"assess", cat:"Assessment Terms", meaning:"relieving symptoms, not curing", ex:"palliative care", exDef:"care focused on comfort rather than cure"},
+  {frag:"idiopathic", type:"assess", cat:"Assessment Terms", meaning:"of unknown cause", ex:"idiopathic disease", exDef:"a condition with no identifiable cause"},
+  {frag:"edema", type:"assess", cat:"Assessment Terms", meaning:"swelling from fluid retention", ex:"leg edema", exDef:"a buildup of fluid causing swelling"},
+  {frag:"lesion", type:"assess", cat:"Assessment Terms", meaning:"abnormal tissue", ex:"skin lesion", exDef:"any area of damaged or abnormal tissue"},
+  {frag:"syndrome", type:"assess", cat:"Assessment Terms", meaning:"a group of symptoms occurring together", ex:"metabolic syndrome", exDef:"a set of symptoms that consistently appear together"},
+];
+const ORIGINAL_PARTS = PARTS.map(p=>({...p}));
+
+// ---------- TEXT-TO-SPEECH ----------
+const canSpeak = 'speechSynthesis' in window;
+let bestVoice = null;
+
+function pickBestVoice(){
+  if(!canSpeak) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if(!voices.length) return null;
+  const englishVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+  const pool = englishVoices.length ? englishVoices : voices;
+  // Prefer higher-quality voice engines over the default robotic one
+  const rank = v => {
+    const n = v.name.toLowerCase();
+    if(n.includes('natural')) return 5;
+    if(n.includes('premium') || n.includes('enhanced')) return 5;
+    if(n.includes('google') && n.includes('us')) return 4;
+    if(n.includes('google')) return 3;
+    if(n.includes('samantha') || n.includes('aria') || n.includes('jenny')) return 4;
+    if(v.localService === false) return 2; // cloud voices are usually clearer than default local ones
+    return 1;
+  };
+  return pool.sort((a,b)=>rank(b)-rank(a))[0];
+}
+if(canSpeak){
+  pickBestVoice();
+  window.speechSynthesis.onvoiceschanged = ()=>{ bestVoice = pickBestVoice(); populateVoiceMenu(); };
+  bestVoice = pickBestVoice();
+  populateVoiceMenu();
+}
+
+function populateVoiceMenu(){
+  const voices = window.speechSynthesis.getVoices();
+  if(!voices.length) return;
+  const row = document.getElementById('voiceRow');
+  const select = document.getElementById('voiceSelect');
+  row.style.display = 'flex';
+  const englishVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+  const list = englishVoices.length ? englishVoices : voices;
+  select.innerHTML = '';
+  list.forEach(v=>{
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = v.name + (v.localService ? '' : ' (online)');
+    if(bestVoice && v.name === bestVoice.name) opt.selected = true;
+    select.appendChild(opt);
+  });
+  select.onchange = ()=>{
+    bestVoice = list.find(v=>v.name === select.value) || bestVoice;
+    speak('This is what I sound like.');
+  };
+}
+
+function cleanForSpeech(text){
+  if(text === 'a-/an-') return 'a or an';
+  return text.replace(/\//g,'').replace(/-/g,'').replace(/\s+/g,' ').trim();
+}
+
+let EX_PRON = {};
+function rebuildExPron(){
+  EX_PRON = {};
+  PARTS.forEach(p=>{ EX_PRON[p.ex] = p.exPron || null; });
+}
+rebuildExPron();
+
+function speak(text){
+  if(!canSpeak) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(cleanForSpeech(text));
+  utter.rate = 0.82;
+  utter.pitch = 1.0;
+  utter.volume = 1.0;
+  utter.lang = 'en-US';
+  if(bestVoice) utter.voice = bestVoice;
+  window.speechSynthesis.speak(utter);
+}
+function speakBtnHTML(text, extraClass){
+  if(!canSpeak) return '';
+  const svg = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,9 8,9 13,4 13,20 8,15 3,15" fill="currentColor" stroke="none"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>`;
+  return `<button type="button" class="speak-btn ${extraClass||''}" data-speak="${text.replace(/"/g,'&quot;')}" title="Hear it" aria-label="Hear pronunciation">${svg}</button>`;
+}
+function wireSpeakButtons(container){
+  if(!canSpeak) return;
+  container.querySelectorAll('[data-speak]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      speak(btn.getAttribute('data-speak'));
+    });
+  });
+}
+
+function deleteBtnHTML(){
+  const svg = `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 4 L20 20 M20 4 L4 20"/></svg>`;
+  return `<button type="button" class="delete-btn" title="Delete this word part" aria-label="Delete this word part">${svg}</button>`;
+}
+
+// ---------- LIBRARY ----------
+let activeCat = "All";
+const grid = document.getElementById('partGrid');
+const chipsWrap = document.getElementById('filterChips');
+const searchBox = document.getElementById('searchBox');
+
+function renderChips(){
+  const cats = ["All", ...Array.from(new Set(PARTS.map(p=>p.cat)))];
+  chipsWrap.innerHTML = '';
+  cats.forEach(cat=>{
+    const chip = document.createElement('button');
+    chip.className = 'chip' + (cat===activeCat ? ' active':'');
+    chip.textContent = cat;
+    chip.addEventListener('click', ()=>{
+      activeCat = cat;
+      renderChips();
+      renderLibrary();
+    });
+    chipsWrap.appendChild(chip);
+  });
+}
+renderChips();
+
+function renderLibrary(){
+  const q = searchBox.value.trim().toLowerCase();
+  grid.innerHTML = '';
+  PARTS.filter(p=>{
+    const catOk = activeCat==='All' || p.cat===activeCat;
+    const qOk = !q || p.frag.toLowerCase().includes(q) || p.meaning.toLowerCase().includes(q) || p.ex.toLowerCase().includes(q);
+    return catOk && qOk;
+  }).forEach(p=>{
+    const el = document.createElement('div');
+    el.className = 'part-card type-'+p.type;
+    el.innerHTML = `<div class="frag-row"><div class="frag">${p.frag}</div><div style="display:flex;gap:6px;align-items:center;">${speakBtnHTML(p.frag)}${deleteBtnHTML()}</div></div>
+      <div class="meaning">${p.meaning}</div>
+      <div class="example"><b>${p.ex}</b> — ${p.exDef} ${speakBtnHTML(p.ex)}</div>`;
+    el.querySelector('.delete-btn').addEventListener('click', ()=> removePart(p));
+    grid.appendChild(el);
+  });
+  wireSpeakButtons(grid);
+  if(!grid.children.length){
+    grid.innerHTML = '<p style="color:var(--ink-soft)">No word parts match your search.</p>';
+  }
+}
+searchBox.addEventListener('input', renderLibrary);
+renderLibrary();
+
+// ---------- TABS ----------
+document.querySelectorAll('#tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.panel).classList.add('active');
+  });
+});
+
+// ---------- FLASHCARDS ----------
+let deck = shuffle([...PARTS]);
+let idx = 0;
+let mastered = new Set();
+const flashCard = document.getElementById('flashCard');
+const flashFront = document.getElementById('flashFront');
+const flashBack = document.getElementById('flashBack');
+const flashProgress = document.getElementById('flashProgress');
+const masteredFill = document.getElementById('masteredFill');
+const masteredLabel = document.getElementById('masteredLabel');
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function renderFlash(){
+  const p = deck[idx];
+  flashCard.classList.remove('flipped');
+  flashFront.textContent = p.frag;
+  flashBack.textContent = p.meaning;
+  flashProgress.textContent = `Card ${idx+1} of ${deck.length}`;
+  masteredFill.style.width = Math.round((mastered.size/PARTS.length)*100)+'%';
+  masteredLabel.textContent = `${mastered.size} mastered`;
+  document.getElementById('flashFrontSpeak').innerHTML = speakBtnHTML(p.frag);
+  document.getElementById('flashBackSpeak').innerHTML = speakBtnHTML(p.meaning, 'on-dark');
+  wireSpeakButtons(flashCard);
+}
+function advanceFlash(){
+  idx = (idx+1) % deck.length;
+  renderFlash();
+}
+flashCard.addEventListener('click', ()=> flashCard.classList.toggle('flipped'));
+document.getElementById('btnFlip').addEventListener('click', ()=> flashCard.classList.toggle('flipped'));
+document.getElementById('btnGotIt').addEventListener('click', ()=>{
+  mastered.add(deck[idx].frag);
+  advanceFlash();
+});
+document.getElementById('btnStillLearning').addEventListener('click', ()=>{
+  mastered.delete(deck[idx].frag);
+  advanceFlash();
+});
+document.getElementById('btnShuffle').addEventListener('click', ()=>{
+  deck = shuffle([...PARTS]);
+  idx = 0;
+  renderFlash();
+});
+renderFlash();
+
+// ---------- SHARED MC LOGIC ----------
+function pickDistractors(correct, pool, n, keyFn){
+  const key = keyFn ? keyFn(correct) : correct;
+  const options = pool.filter(p => (keyFn ? keyFn(p) : p) !== key);
+  shuffle(options);
+  return options.slice(0,n);
+}
+
+// ---------- TERM BUILDER (definition -> term) ----------
+let builderScore=0, builderTotal=0;
+let builderCurrent=null;
+const builderPrompt = document.getElementById('builderPrompt');
+const builderChoicesEl = document.getElementById('builderChoices');
+const builderFeedback = document.getElementById('builderFeedback');
+const builderScoreEl = document.getElementById('builderScore');
+const builderCountEl = document.getElementById('builderCount');
+
+function newBuilderQuestion(){
+  builderFeedback.textContent = '';
+  builderCurrent = PARTS[Math.floor(Math.random()*PARTS.length)];
+  builderPrompt.textContent = builderCurrent.exDef;
+  const wrongTerms = [...new Set(pickDistractors(builderCurrent, PARTS, 8, p=>p.ex).map(p=>p.ex))].slice(0,3);
+  const options = shuffle([builderCurrent.ex, ...wrongTerms]);
+  builderChoicesEl.innerHTML = '';
+  options.forEach(term=>{
+    const row = document.createElement('div');
+    row.className = 'choice-row';
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className='choice-btn';
+    b.dataset.term = term;
+    b.textContent = term;
+    b.addEventListener('click', ()=>{
+      builderTotal++;
+      const correct = term === builderCurrent.ex;
+      if(correct) builderScore++;
+      builderChoicesEl.querySelectorAll('.choice-btn').forEach(c=>{
+        c.disabled = true;
+        if(c.dataset.term === builderCurrent.ex) c.classList.add('correct');
+        else if(c===b) c.classList.add('incorrect');
+      });
+      builderFeedback.textContent = correct
+        ? `Correct — "${builderCurrent.ex}" means "${builderCurrent.exDef}."`
+        : `Not quite. "${builderCurrent.ex}" is the term that means "${builderCurrent.exDef}."`;
+      builderScoreEl.textContent = `Score: ${builderScore} / ${builderTotal}`;
+    });
+    row.appendChild(b);
+    const speakSpan = document.createElement('span');
+    speakSpan.innerHTML = speakBtnHTML(term);
+    row.appendChild(speakSpan);
+    builderChoicesEl.appendChild(row);
+  });
+  builderCountEl.textContent = `Round ${builderTotal+1}`;
+  wireSpeakButtons(builderChoicesEl);
+}
+document.getElementById('builderNext').addEventListener('click', newBuilderQuestion);
+newBuilderQuestion();
+
+// ---------- QUICK QUIZ (fragment -> meaning) ----------
+let quizScore=0, quizTotal=0;
+let quizCurrent=null;
+const quizPrompt = document.getElementById('quizPrompt');
+const quizChoicesEl = document.getElementById('quizChoices');
+const quizFeedback = document.getElementById('quizFeedback');
+const quizScoreEl = document.getElementById('quizScore');
+const quizCountEl = document.getElementById('quizCount');
+
+function newQuizQuestion(){
+  quizFeedback.textContent = '';
+  quizCurrent = PARTS[Math.floor(Math.random()*PARTS.length)];
+  quizPrompt.textContent = quizCurrent.frag;
+  const wrongMeanings = [...new Set(pickDistractors(quizCurrent, PARTS, 8, p=>p.meaning).map(p=>p.meaning))].slice(0,3);
+  const options = shuffle([quizCurrent.meaning, ...wrongMeanings]);
+  quizChoicesEl.innerHTML = '';
+  options.forEach(meaning=>{
+    const b = document.createElement('button');
+    b.className='choice-btn';
+    b.textContent = meaning;
+    b.addEventListener('click', ()=>{
+      quizTotal++;
+      const correct = meaning === quizCurrent.meaning;
+      if(correct) quizScore++;
+      Array.from(quizChoicesEl.children).forEach(c=>{
+        c.disabled = true;
+        if(c.textContent === quizCurrent.meaning) c.classList.add('correct');
+        else if(c===b) c.classList.add('incorrect');
+      });
+      quizFeedback.textContent = correct
+        ? `Correct — "${quizCurrent.frag}" means "${quizCurrent.meaning}."`
+        : `Not quite. "${quizCurrent.frag}" means "${quizCurrent.meaning}."`;
+      quizScoreEl.textContent = `Score: ${quizScore} / ${quizTotal}`;
+    });
+    quizChoicesEl.appendChild(b);
+  });
+  quizCountEl.textContent = `Question ${quizTotal+1}`;
+}
+document.getElementById('quizNext').addEventListener('click', newQuizQuestion);
+newQuizQuestion();
+
+// ---------- ADD YOUR OWN ----------
+const addForm = document.getElementById('addForm');
+const addFeedback = document.getElementById('addFeedback');
+const customList = document.getElementById('customList');
+const customCount = document.getElementById('customCount');
+
+function refreshEverything(){
+  rebuildExPron();
+  // library
+  renderChips();
+  renderLibrary();
+  // flashcards: rebuild deck fresh so new/removed cards are included
+  deck = shuffle([...PARTS]);
+  idx = 0;
+  renderFlash();
+  // builder & quiz just read PARTS live on next question, nothing to rebuild
+  renderCustomList();
+  updateDeletedCount();
+}
+
+function removePart(p){
+  const msg = p.custom
+    ? `Delete your custom entry "${p.frag}" (${p.ex})? This can't be undone.`
+    : `Delete "${p.frag}" (${p.ex})? You can bring it back later with "Restore deleted defaults" in the Add Your Own tab.`;
+  if(!confirm(msg)) return;
+  const i = PARTS.indexOf(p);
+  if(i>-1) PARTS.splice(i,1);
+  if(activeCat!=='All' && !PARTS.some(x=>x.cat===activeCat)) activeCat='All';
+  refreshEverything();
+}
+
+function updateDeletedCount(){
+  const deletedCount = ORIGINAL_PARTS.filter(op => !PARTS.some(p => p.frag===op.frag && p.ex===op.ex && !p.custom)).length;
+  const el = document.getElementById('deletedCount');
+  if(el) el.textContent = deletedCount;
+}
+
+document.getElementById('btnRestoreDefaults').addEventListener('click', ()=>{
+  const missing = ORIGINAL_PARTS.filter(op => !PARTS.some(p => p.frag===op.frag && p.ex===op.ex && !p.custom));
+  if(!missing.length){
+    addFeedback.textContent = "Nothing to restore — no default word parts have been deleted.";
+    return;
+  }
+  PARTS.push(...missing.map(p=>({...p})));
+  addFeedback.textContent = `Restored ${missing.length} deleted entr${missing.length===1?'y':'ies'}.`;
+  refreshEverything();
+});
+
+function renderCustomList(){
+  const customs = PARTS.filter(p=>p.custom);
+  customCount.textContent = customs.length;
+  customList.innerHTML = '';
+  if(!customs.length){
+    customList.innerHTML = '<p style="color:var(--ink-soft);font-size:0.9rem;">You haven\'t added anything yet — use the form above.</p>';
+    return;
+  }
+  customs.forEach(p=>{
+    const row = document.createElement('div');
+    row.className = 'custom-row';
+    row.innerHTML = `<div class="info"><b>${p.frag}</b> — ${p.meaning} <span style="color:var(--ink-soft)">(${p.ex})</span></div>`;
+    const btn = document.createElement('button');
+    btn.className = 'remove';
+    btn.textContent = 'Remove';
+    btn.addEventListener('click', ()=> removePart(p));
+    row.appendChild(btn);
+    customList.appendChild(row);
+  });
+}
+
+addForm.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const frag = document.getElementById('addFrag').value.trim();
+  const type = document.getElementById('addType').value;
+  const cat = document.getElementById('addCat').value.trim() || 'My Additions';
+  const meaning = document.getElementById('addMeaning').value.trim();
+  const ex = document.getElementById('addEx').value.trim();
+  const exDef = document.getElementById('addExDef').value.trim();
+  if(!frag || !meaning || !ex || !exDef){
+    addFeedback.textContent = 'Fill in every field to add an entry.';
+    return;
+  }
+  PARTS.push({frag, type, cat, meaning, ex, exDef, custom:true});
+  addFeedback.textContent = `Added "${frag}" — it now appears in the Library, Flashcards, Term Builder, and Quick Quiz.`;
+  addForm.reset();
+  applyAddTypeDefaults();
+  activeCat = cat;
+  refreshEverything();
+});
+
+const ADD_TYPE_DEFAULTS = {
+  root:   { catLabel:'Category (used for filtering)', cat:'My Additions', fragLabel:'Fragment (e.g. cardi/o, hyper-, -itis)', fragPh:'cardi/o', meaningLabel:'Meaning', meaningPh:'heart', exLabel:'Example term', exPh:'cardiology', exDefLabel:"Example term's definition", exDefPh:'the study of the heart' },
+  prefix: { catLabel:'Category (used for filtering)', cat:'My Additions', fragLabel:'Fragment (e.g. cardi/o, hyper-, -itis)', fragPh:'hyper-', meaningLabel:'Meaning', meaningPh:'excessive, above normal', exLabel:'Example term', exPh:'hypertension', exDefLabel:"Example term's definition", exDefPh:'high blood pressure' },
+  suffix: { catLabel:'Category (used for filtering)', cat:'My Additions', fragLabel:'Fragment (e.g. cardi/o, hyper-, -itis)', fragPh:'-itis', meaningLabel:'Meaning', meaningPh:'inflammation', exLabel:'Example term', exPh:'tonsillitis', exDefLabel:"Example term's definition", exDefPh:'inflammation of the tonsils' },
+  abbr:   { catLabel:'Category (used for filtering)', cat:'Abbreviations', fragLabel:'Abbreviation', fragPh:'NPO', meaningLabel:'What it stands for', meaningPh:'nothing by mouth', exLabel:'Example usage', exPh:'NPO after midnight', exDefLabel:'Explanation of the example', exDefPh:'instruction to eat or drink nothing' },
+  assess: { catLabel:'Category (used for filtering)', cat:'Assessment Terms', fragLabel:'Assessment term', fragPh:'auscultation', meaningLabel:'Definition', meaningPh:'listening to internal body sounds', exLabel:'Example usage', exPh:'cardiac auscultation', exDefLabel:'Explanation of the example', exDefPh:'listening to heart sounds during a physical exam' },
+};
+
+function applyAddTypeDefaults(){
+  const type = document.getElementById('addType').value;
+  const d = ADD_TYPE_DEFAULTS[type] || ADD_TYPE_DEFAULTS.root;
+  document.getElementById('addFragLabel').firstChild.textContent = d.fragLabel;
+  document.getElementById('addFrag').placeholder = d.fragPh;
+  document.getElementById('addMeaningLabel').firstChild.textContent = d.meaningLabel;
+  document.getElementById('addMeaning').placeholder = d.meaningPh;
+  document.getElementById('addExLabel').firstChild.textContent = d.exLabel;
+  document.getElementById('addEx').placeholder = d.exPh;
+  document.getElementById('addExDefLabel').firstChild.textContent = d.exDefLabel;
+  document.getElementById('addExDef').placeholder = d.exDefPh;
+  document.getElementById('addCat').value = d.cat;
+}
+document.getElementById('addType').addEventListener('change', applyAddTypeDefaults);
+applyAddTypeDefaults();
+
+renderCustomList();
+updateDeletedCount();
+</script>
+</body>
+</html>
