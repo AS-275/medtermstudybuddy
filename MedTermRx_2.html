@@ -33,6 +33,16 @@
   }
   .wrap{max-width:900px;margin:0 auto;padding:32px 20px 80px;}
 
+  .auth-gate{
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .auth-card{
+    background:var(--card); border:2px solid var(--ink); border-radius:8px; padding:40px 34px;
+    max-width:360px; width:100%; text-align:center; box-shadow: 0 4px 0 var(--shadow);
+  }
+  .auth-title{ font-size:1.7rem; margin:0 0 4px; font-weight:700; }
+  .auth-sub{ color:var(--ink-soft); font-size:0.9rem; margin:0 0 24px; }
+
   header.top{
     display:flex; align-items:baseline; justify-content:space-between;
     border-bottom: 3px solid var(--ink);
@@ -213,14 +223,31 @@
     .rx-mark{font-size:1.8rem;}
   }
 </style>
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 </head>
 <body>
-<div class="wrap">
+
+<!-- AUTH GATE -->
+<div id="authGate" class="auth-gate">
+  <div class="auth-card">
+    <h1 class="auth-title">MedTerm Rx</h1>
+    <p class="auth-sub">Sign in to access your study tools</p>
+    <button type="button" class="btn primary" id="btnLogin" style="width:100%;margin-bottom:10px;">Log In</button>
+    <button type="button" class="btn" id="btnSignup" style="width:100%;">Sign Up</button>
+  </div>
+</div>
+
+<div class="wrap" id="appRoot" style="display:none;">
   <header class="top">
     <div class="title-block">
       <h1>MedTerm Rx</h1>
+      <p>WORD PARTS + ABBREVIATIONS + ASSESSMENT TERMS</p>
     </div>
-    <div class="rx-mark">℞</div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <span id="userEmail" style="font-family:'Courier New',monospace;font-size:0.78rem;color:var(--ink-soft);"></span>
+      <button type="button" id="btnLogout" class="btn" style="padding:6px 12px;font-size:0.8rem;">Log Out</button>
+      <div class="rx-mark">℞</div>
+    </div>
   </header>
 
   <div class="voice-row" id="voiceRow" style="display:none;">
@@ -349,9 +376,107 @@
   <footer class="note">Deck resets each visit — no data leaves your browser.</footer>
 </div>
 
-//This is a testing comment
-
 <script>
+// ---------- AUTH (Netlify Identity) + CLOUD SYNC ----------
+let saveTimer = null;
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveUserData, 800);
+}
+
+function collectUserData(){
+  const deletedDefaults = ORIGINAL_PARTS
+    .filter(op => !PARTS.some(p => !p.custom && p.frag === op.frag && p.ex === op.ex))
+    .map(p => ({ frag: p.frag, ex: p.ex }));
+  return {
+    customParts: PARTS.filter(p => p.custom),
+    deletedDefaults,
+    mastered: Array.from(mastered),
+  };
+}
+
+function applyUserData(data){
+  if(!data) return;
+  PARTS.length = 0;
+  PARTS.push(...ORIGINAL_PARTS.map(p => ({...p})));
+  if(Array.isArray(data.deletedDefaults)){
+    data.deletedDefaults.forEach(d => {
+      const i = PARTS.findIndex(p => !p.custom && p.frag === d.frag && p.ex === d.ex);
+      if(i > -1) PARTS.splice(i, 1);
+    });
+  }
+  if(Array.isArray(data.customParts)){
+    PARTS.push(...data.customParts.map(p => ({...p, custom:true})));
+  }
+  mastered = new Set(Array.isArray(data.mastered) ? data.mastered : []);
+  if(typeof refreshEverything === 'function') refreshEverything();
+}
+
+async function authedFetch(path, options){
+  const user = window.netlifyIdentity && netlifyIdentity.currentUser();
+  if(!user) return null;
+  await user.jwt(); // refreshes token if expired
+  const headers = Object.assign({}, options && options.headers, {
+    'Authorization': `Bearer ${user.token.access_token}`,
+    'Content-Type': 'application/json',
+  });
+  return fetch(path, Object.assign({}, options, { headers }));
+}
+
+async function loadUserData(){
+  try{
+    const res = await authedFetch('/.netlify/functions/user-data');
+    if(!res || !res.ok) return;
+    const data = await res.json();
+    applyUserData(data);
+  }catch(e){
+    console.warn('Could not load synced data, using local defaults.', e);
+  }
+}
+
+async function saveUserData(){
+  try{
+    await authedFetch('/.netlify/functions/user-data', {
+      method:'POST',
+      body: JSON.stringify(collectUserData()),
+    });
+  }catch(e){
+    console.warn('Could not save synced data.', e);
+  }
+}
+
+function showApp(user){
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'block';
+  document.getElementById('userEmail').textContent = user && user.email ? user.email : '';
+}
+function showGate(){
+  document.getElementById('authGate').style.display = 'flex';
+  document.getElementById('appRoot').style.display = 'none';
+}
+if(window.netlifyIdentity){
+  netlifyIdentity.on('init', user => {
+    if(user){ showApp(user); loadUserData(); }
+    else showGate();
+  });
+  netlifyIdentity.on('login', user => {
+    showApp(user);
+    netlifyIdentity.close();
+    loadUserData();
+  });
+  netlifyIdentity.on('logout', () => { showGate(); });
+  netlifyIdentity.init();
+} else {
+  // Identity script failed to load (e.g. opened as a local file, or Identity not
+  // yet enabled in the Netlify dashboard) — fail open so the app is still usable,
+  // just without login or sync.
+  showApp(null);
+  document.getElementById('userEmail').textContent = '(sign-in unavailable)';
+}
+document.getElementById('btnLogin').addEventListener('click', ()=> window.netlifyIdentity && netlifyIdentity.open('login'));
+document.getElementById('btnSignup').addEventListener('click', ()=> window.netlifyIdentity && netlifyIdentity.open('signup'));
+document.getElementById('btnLogout').addEventListener('click', ()=> window.netlifyIdentity && netlifyIdentity.logout());
+
 // ---------- DATA ----------
 const PARTS = [
   {frag:"cardi/o", type:"root", cat:"Body Systems", meaning:"heart", ex:"cardiology", exDef:"the study of the heart", pron:"KAR dee oh", exPron:"kar dee OL uh jee"},
@@ -686,10 +811,12 @@ document.getElementById('btnFlip').addEventListener('click', ()=> flashCard.clas
 document.getElementById('btnGotIt').addEventListener('click', ()=>{
   mastered.add(deck[idx].frag);
   advanceFlash();
+  scheduleSave();
 });
 document.getElementById('btnStillLearning').addEventListener('click', ()=>{
   mastered.delete(deck[idx].frag);
   advanceFlash();
+  scheduleSave();
 });
 document.getElementById('btnShuffle').addEventListener('click', ()=>{
   deck = shuffle([...PARTS]);
@@ -826,6 +953,7 @@ function removePart(p){
   if(i>-1) PARTS.splice(i,1);
   if(activeCat!=='All' && !PARTS.some(x=>x.cat===activeCat)) activeCat='All';
   refreshEverything();
+  scheduleSave();
 }
 
 function updateDeletedCount(){
@@ -843,6 +971,7 @@ document.getElementById('btnRestoreDefaults').addEventListener('click', ()=>{
   PARTS.push(...missing.map(p=>({...p})));
   addFeedback.textContent = `Restored ${missing.length} deleted entr${missing.length===1?'y':'ies'}.`;
   refreshEverything();
+  scheduleSave();
 });
 
 function renderCustomList(){
@@ -884,6 +1013,7 @@ addForm.addEventListener('submit', (e)=>{
   applyAddTypeDefaults();
   activeCat = cat;
   refreshEverything();
+  scheduleSave();
 });
 
 const ADD_TYPE_DEFAULTS = {

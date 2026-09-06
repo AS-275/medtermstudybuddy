@@ -1,0 +1,9 @@
+{
+  "name": "medtermrx",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MedTerm Rx study app with Netlify Identity login and cloud-synced progress",
+  "dependencies": {
+    "@netlify/blobs": "^7.0.0"
+  }
+}
