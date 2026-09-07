@@ -1,10 +1,2 @@
-<<<<<<< HEAD
-
 [build]
   functions = "netlify/functions"
-=======
-#
-[build]
-  functions = "netlify/functions"
-#
->>>>>>> df796150a9218b0d806d75f46a1dde7d8af65472

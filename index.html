@@ -59,6 +59,52 @@
     font-family: Georgia, serif; font-size:2.4rem; color:var(--coral);
     font-style:italic; line-height:1;
   }
+  .streak-badge{
+    display:inline-flex; align-items:center; gap:5px;
+    background:var(--coral-soft); border:1.5px solid var(--coral);
+    border-radius:20px; padding:6px 12px; font-size:0.85rem; font-weight:700;
+    color:var(--ink); white-space:nowrap; cursor:pointer;
+  }
+  .streak-badge:hover{ background:var(--coral); color:#fff; }
+
+  .streak-calendar{
+    display:none; position:absolute; top:calc(100% + 10px); right:0; z-index:20;
+    background:var(--card); border:2px solid var(--ink); border-radius:8px;
+    padding:14px 16px; box-shadow:0 4px 0 var(--shadow); width:260px;
+  }
+  .streak-calendar.open{ display:block; }
+  .cal-nav{
+    display:flex; align-items:center; justify-content:space-between;
+    font-family:'Courier New',monospace; font-weight:700; font-size:0.85rem;
+    margin-bottom:10px;
+  }
+  .cal-nav button{
+    background:none; border:1.5px solid var(--ink); border-radius:4px;
+    width:24px; height:24px; cursor:pointer; font-size:0.9rem; line-height:1;
+    color:var(--ink);
+  }
+  .cal-nav button:hover{ background:var(--coral-soft); }
+  .cal-grid{
+    display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; text-align:center;
+  }
+  .cal-dow{
+    font-family:'Courier New',monospace; font-size:0.7rem; color:var(--ink-soft);
+    font-weight:700; padding-bottom:4px;
+  }
+  .cal-day{
+    font-size:0.8rem; padding:5px 0; border-radius:4px; color:var(--ink-soft);
+  }
+  .cal-day.visited{ background:var(--coral); color:#fff; font-weight:700; }
+  .cal-day.today{ box-shadow: inset 0 0 0 2px var(--sage-deep); }
+  .cal-legend{
+    display:flex; align-items:center; gap:4px; margin-top:10px;
+    font-size:0.72rem; color:var(--ink-soft);
+  }
+  .cal-swatch{
+    display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:2px;
+  }
+  .cal-swatch.visited{ background:var(--coral); }
+  .cal-swatch.today{ background:var(--card); box-shadow: inset 0 0 0 2px var(--sage-deep); }
 
   nav.tabs{
     display:flex; gap:0; margin-bottom:24px; border:2px solid var(--ink);
@@ -223,30 +269,34 @@
     .rx-mark{font-size:1.8rem;}
   }
 </style>
-<!-- Netlify Identity disabled:
-<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
--->
 </head>
 <body>
 
-<!-- AUTH GATE -->
-<div id="authGate" class="auth-gate">
-  <div class="auth-card">
-    <h1 class="auth-title">MedTerm Rx</h1>
-    <p class="auth-sub">Sign in to access your study tools</p>
-    <button type="button" class="btn primary" id="btnLogin" style="width:100%;margin-bottom:10px;">Log In</button>
-    <button type="button" class="btn" id="btnSignup" style="width:100%;">Sign Up</button>
-  </div>
-</div>
-
-<div class="wrap" id="appRoot" style="display:none;">
+<div class="wrap" id="appRoot">
   <header class="top">
     <div class="title-block">
       <h1>MedTerm Rx</h1>
+      <p>WORD PARTS + ABBREVIATIONS + ASSESSMENT TERMS</p>
     </div>
-    <div style="display:flex; align-items:center; gap:14px;">
-      <span id="userEmail" style="font-family:'Courier New',monospace;font-size:0.78rem;color:var(--ink-soft);"></span>
-      <button type="button" id="btnLogout" class="btn" style="padding:6px 12px;font-size:0.8rem;">Log Out</button>
+    <div style="display:flex; align-items:center; gap:14px; position:relative;">
+      <!--
+        CLOUD LOGIN / SYNC (disabled — was built for Cloudflare Access + a
+        Pages Function; re-enable if this ever moves off GitHub Pages to a
+        host that supports serverless functions again).
+
+        <span id="userEmail" style="font-family:'Courier New',monospace;font-size:0.78rem;color:var(--ink-soft);"></span>
+        <a href="/cdn-cgi/access/logout" id="btnLogout" class="btn" style="padding:6px 12px;font-size:0.8rem;text-decoration:none;">Log Out</a>
+      -->
+      <div class="streak-badge" id="streakBadge" title="Study streak"></div>
+      <div class="streak-calendar" id="streakCalendar">
+        <div class="cal-nav">
+          <button type="button" id="calPrev" aria-label="Previous month">‹</button>
+          <span id="calendarLabel"></span>
+          <button type="button" id="calNext" aria-label="Next month">›</button>
+        </div>
+        <div class="cal-grid" id="calendarGrid"></div>
+        <div class="cal-legend"><span class="cal-swatch visited"></span> studied &nbsp; <span class="cal-swatch today"></span> today</div>
+      </div>
       <div class="rx-mark">℞</div>
     </div>
   </header>
@@ -378,19 +428,229 @@
 </div>
 
 <script>
-// ---------- AUTH (Netlify Identity) + CLOUD SYNC ----------
 /*
-  Netlify Identity and cloud sync have been commented out.
-  The app now runs locally without login or Netlify Functions.
+// ---------- CLOUD LOGIN + SYNC (disabled — currently on GitHub Pages) ----------
+//
+// This was built for Cloudflare Access (email one-time-code login) plus a
+// Cloudflare Pages Function + KV storage for per-user sync. GitHub Pages is
+// plain static hosting with no serverless functions, so none of this can run
+// here. Kept as a comment in case this ever moves to a host that supports
+// functions again (Cloudflare Pages, Netlify, Vercel, etc.) — you'd need to
+// also restore the matching functions/api/user-data.js file and the
+// userEmail / Log Out markup in the header above.
 
-  Original Netlify authentication/cloud-sync code was here.
+let saveTimer = null;
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveUserData, 800);
+}
+
+function collectUserData(){
+  const deletedDefaults = ORIGINAL_PARTS
+    .filter(op => !PARTS.some(p => !p.custom && p.frag === op.frag && p.ex === op.ex))
+    .map(p => ({ frag: p.frag, ex: p.ex }));
+  return {
+    customParts: PARTS.filter(p => p.custom),
+    deletedDefaults,
+    mastered: Array.from(mastered),
+  };
+}
+
+function applyUserData(data){
+  if(!data) return;
+  PARTS.length = 0;
+  PARTS.push(...ORIGINAL_PARTS.map(p => ({...p})));
+  if(Array.isArray(data.deletedDefaults)){
+    data.deletedDefaults.forEach(d => {
+      const i = PARTS.findIndex(p => !p.custom && p.frag === d.frag && p.ex === d.ex);
+      if(i > -1) PARTS.splice(i, 1);
+    });
+  }
+  if(Array.isArray(data.customParts)){
+    PARTS.push(...data.customParts.map(p => ({...p, custom:true})));
+  }
+  mastered = new Set(Array.isArray(data.mastered) ? data.mastered : []);
+  if(typeof refreshEverything === 'function') refreshEverything();
+}
+
+async function loadIdentity(){
+  try{
+    const res = await fetch('/cdn-cgi/access/get-identity', { credentials:'include' });
+    if(!res.ok) return;
+    const identity = await res.json();
+    document.getElementById('userEmail').textContent = identity.email || '';
+  }catch(e){
+    document.getElementById('userEmail').textContent = '(sign-in unavailable)';
+    document.getElementById('btnLogout').style.display = 'none';
+  }
+}
+
+async function loadUserData(){
+  try{
+    const res = await fetch('/api/user-data', { credentials:'include' });
+    if(!res.ok) return;
+    const data = await res.json();
+    applyUserData(data);
+  }catch(e){
+    console.warn('Could not load synced data, using local defaults.', e);
+  }
+}
+
+async function saveUserData(){
+  try{
+    await fetch('/api/user-data', {
+      method:'POST',
+      credentials:'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(collectUserData()),
+    });
+  }catch(e){
+    console.warn('Could not save synced data.', e);
+  }
+}
+
+loadIdentity();
+loadUserData();
 */
 
-// Local-only mode: no login or cloud sync.
-function scheduleSave() {}
-document.getElementById('authGate').style.display = 'none';
-document.getElementById('appRoot').style.display = 'block';
-document.getElementById('userEmail').textContent = '';
+// ---------- STUDY STREAK ----------
+//
+// Tracks how many consecutive calendar days in a row you've opened the app,
+// saved in the browser's localStorage so it persists between visits. This
+// only works when the file is actually hosted on a real website (like your
+// GitHub Pages site) — browser storage doesn't persist in some sandboxed
+// preview environments, but on your real deployed site this works normally.
+
+const STREAK_KEY = 'medtermrx_streak_v1';
+const HISTORY_KEY = 'medtermrx_history_v1';
+
+function getLocalDateString(d){
+  const yr = d.getFullYear();
+  const mo = String(d.getMonth()+1).padStart(2,'0');
+  const da = String(d.getDate()).padStart(2,'0');
+  return `${yr}-${mo}-${da}`;
+}
+
+function daysBetween(dateStrA, dateStrB){
+  const a = new Date(dateStrA + 'T00:00:00');
+  const b = new Date(dateStrB + 'T00:00:00');
+  return Math.round((b - a) / 86400000);
+}
+
+function getVisitedDates(){
+  try{ return new Set(JSON.parse(localStorage.getItem(HISTORY_KEY)) || []); }
+  catch(e){ return new Set(); }
+}
+
+function markVisitedToday(dateStr){
+  const set = getVisitedDates();
+  set.add(dateStr);
+  try{ localStorage.setItem(HISTORY_KEY, JSON.stringify([...set])); }
+  catch(e){ /* storage unavailable — calendar just won't have history */ }
+}
+
+function updateStreak(){
+  let saved = null;
+  try{ saved = JSON.parse(localStorage.getItem(STREAK_KEY)); }catch(e){}
+  const today = getLocalDateString(new Date());
+  let current = 1, longest = 1;
+  if(saved && saved.lastVisit){
+    const diff = daysBetween(saved.lastVisit, today);
+    if(diff === 0){
+      current = saved.current || 1;
+      longest = saved.longest || current;
+    } else if(diff === 1){
+      current = (saved.current || 0) + 1;
+      longest = Math.max(saved.longest || 0, current);
+    } else if(diff > 1){
+      current = 1;
+      longest = Math.max(saved.longest || 0, 1);
+    } else {
+      // diff < 0 — clock changed backwards or similar edge case; don't
+      // penalize, just keep what was there.
+      current = saved.current || 1;
+      longest = saved.longest || current;
+    }
+  }
+  try{
+    localStorage.setItem(STREAK_KEY, JSON.stringify({ lastVisit: today, current, longest }));
+  }catch(e){
+    // localStorage unavailable — streak just won't persist between visits.
+  }
+  markVisitedToday(today);
+  return { current, longest };
+}
+
+function renderStreak(){
+  const badge = document.getElementById('streakBadge');
+  const { current, longest } = updateStreak();
+  badge.innerHTML = `🔥 <b>${current}</b> day${current===1?'':'s'}`;
+  badge.title = `Click to see your streak calendar`;
+}
+renderStreak();
+
+// ---------- STREAK CALENDAR ----------
+let calViewDate = new Date();
+
+function renderCalendar(){
+  const grid = document.getElementById('calendarGrid');
+  const label = document.getElementById('calendarLabel');
+  const year = calViewDate.getFullYear();
+  const month = calViewDate.getMonth();
+  label.textContent = calViewDate.toLocaleString('default', { month:'long', year:'numeric' });
+
+  const visited = getVisitedDates();
+  const todayStr = getLocalDateString(new Date());
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+
+  grid.innerHTML = '';
+  ['S','M','T','W','T','F','S'].forEach(d=>{
+    const el = document.createElement('div');
+    el.className = 'cal-dow';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+  for(let i=0; i<firstWeekday; i++){
+    grid.appendChild(document.createElement('div'));
+  }
+  for(let day=1; day<=daysInMonth; day++){
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const cell = document.createElement('div');
+    cell.className = 'cal-day';
+    if(visited.has(dateStr)) cell.classList.add('visited');
+    if(dateStr === todayStr) cell.classList.add('today');
+    cell.textContent = day;
+    grid.appendChild(cell);
+  }
+}
+
+const streakBadgeEl = document.getElementById('streakBadge');
+const streakCalendarEl = document.getElementById('streakCalendar');
+streakBadgeEl.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  const opening = !streakCalendarEl.classList.contains('open');
+  if(opening){
+    calViewDate = new Date(); // always reopen on the current month
+    renderCalendar();
+  }
+  streakCalendarEl.classList.toggle('open', opening);
+});
+document.getElementById('calPrev').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  calViewDate.setMonth(calViewDate.getMonth()-1);
+  renderCalendar();
+});
+document.getElementById('calNext').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  calViewDate.setMonth(calViewDate.getMonth()+1);
+  renderCalendar();
+});
+document.addEventListener('click', (e)=>{
+  if(!streakCalendarEl.contains(e.target) && e.target !== streakBadgeEl){
+    streakCalendarEl.classList.remove('open');
+  }
+});
 
 // ---------- DATA ----------
 const PARTS = [
@@ -726,12 +986,10 @@ document.getElementById('btnFlip').addEventListener('click', ()=> flashCard.clas
 document.getElementById('btnGotIt').addEventListener('click', ()=>{
   mastered.add(deck[idx].frag);
   advanceFlash();
-  scheduleSave();
 });
 document.getElementById('btnStillLearning').addEventListener('click', ()=>{
   mastered.delete(deck[idx].frag);
   advanceFlash();
-  scheduleSave();
 });
 document.getElementById('btnShuffle').addEventListener('click', ()=>{
   deck = shuffle([...PARTS]);
@@ -868,7 +1126,6 @@ function removePart(p){
   if(i>-1) PARTS.splice(i,1);
   if(activeCat!=='All' && !PARTS.some(x=>x.cat===activeCat)) activeCat='All';
   refreshEverything();
-  scheduleSave();
 }
 
 function updateDeletedCount(){
@@ -886,7 +1143,6 @@ document.getElementById('btnRestoreDefaults').addEventListener('click', ()=>{
   PARTS.push(...missing.map(p=>({...p})));
   addFeedback.textContent = `Restored ${missing.length} deleted entr${missing.length===1?'y':'ies'}.`;
   refreshEverything();
-  scheduleSave();
 });
 
 function renderCustomList(){
@@ -928,7 +1184,6 @@ addForm.addEventListener('submit', (e)=>{
   applyAddTypeDefaults();
   activeCat = cat;
   refreshEverything();
-  scheduleSave();
 });
 
 const ADD_TYPE_DEFAULTS = {
