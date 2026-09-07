@@ -187,6 +187,8 @@
   .btn.good{ background:var(--sage-deep); color:#fff; border-color:var(--sage-deep); }
   .btn.bad{ background:var(--coral); color:#fff; border-color:var(--coral); }
   .btn:hover{ filter:brightness(0.95); }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; filter:none; }
+  .btn:disabled:hover{ filter:none; }
   .mastered-bar{ width:100%; max-width:420px; height:8px; background:var(--line); border-radius:4px; overflow:hidden;}
   .mastered-fill{ height:100%; background:var(--coral); width:0%; transition:width .3s;}
 
@@ -1017,6 +1019,7 @@ const builderCountEl = document.getElementById('builderCount');
 
 function newBuilderQuestion(){
   builderFeedback.textContent = '';
+  document.getElementById('builderNext').disabled = true;
   builderCurrent = PARTS[Math.floor(Math.random()*PARTS.length)];
   builderPrompt.textContent = builderCurrent.exDef;
   const wrongTerms = [...new Set(pickDistractors(builderCurrent, PARTS, 8, p=>p.ex).map(p=>p.ex))].slice(0,3);
@@ -1043,6 +1046,7 @@ function newBuilderQuestion(){
         ? `Correct — "${builderCurrent.ex}" means "${builderCurrent.exDef}."`
         : `Not quite. "${builderCurrent.ex}" is the term that means "${builderCurrent.exDef}."`;
       builderScoreEl.textContent = `Score: ${builderScore} / ${builderTotal}`;
+      document.getElementById('builderNext').disabled = false;
     });
     row.appendChild(b);
     const speakSpan = document.createElement('span');
@@ -1067,6 +1071,7 @@ const quizCountEl = document.getElementById('quizCount');
 
 function newQuizQuestion(){
   quizFeedback.textContent = '';
+  document.getElementById('quizNext').disabled = true;
   quizCurrent = PARTS[Math.floor(Math.random()*PARTS.length)];
   quizPrompt.textContent = quizCurrent.frag;
   const wrongMeanings = [...new Set(pickDistractors(quizCurrent, PARTS, 8, p=>p.meaning).map(p=>p.meaning))].slice(0,3);
@@ -1089,6 +1094,7 @@ function newQuizQuestion(){
         ? `Correct — "${quizCurrent.frag}" means "${quizCurrent.meaning}."`
         : `Not quite. "${quizCurrent.frag}" means "${quizCurrent.meaning}."`;
       quizScoreEl.textContent = `Score: ${quizScore} / ${quizTotal}`;
+      document.getElementById('quizNext').disabled = false;
     });
     quizChoicesEl.appendChild(b);
   });
